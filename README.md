@@ -1,4 +1,6 @@
-# WB Pool 本地版 · 双击即用的 AI 聚合池
+# WorkBuddy AI 聚合池 · WB Pool
+
+[中文](#-中文) | [English](#english)
 
 把 **WorkBuddy 多账号免费额度** 和 **76 家第三方免费渠道** 聚合成一个 OpenAI 兼容端点。
 单文件 exe，**双击就能用**，全程只在本机运行，不需要任何服务器。
@@ -7,7 +9,29 @@
 
 ---
 
-## 它做什么
+## 🇨🇳 中文
+
+### 界面预览 / Screenshots
+
+**账号池 / Account Pool** —— 所有账号一目了然：积分、签到、令牌有效期、冷却状态
+![账号池](docs/screenshots/01-pool.png)
+
+**聚合渠道 / Providers** —— 76 家免费渠道注册表，填 Key 即点亮
+![聚合渠道](docs/screenshots/02-providers.png)
+
+**登录渠道 / Channel Login** —— 支持 OAuth 登录的渠道，页面里直接登录扩池
+![登录渠道](docs/screenshots/03-channels.png)
+
+**数据看板 / Dashboard** —— 调用量、积分消耗、成功率统计
+![数据看板](docs/screenshots/04-stats.png)
+
+**路由 / Routes** —— 把多个模型串成调用链，按顺序或轮换出请求
+![路由](docs/screenshots/05-routes.png)
+
+**网关 / Gateway** —— OpenAI 兼容端点、模型勾选、一键写入 WorkBuddy
+![网关](docs/screenshots/06-gateway.png)
+
+### 它做什么
 
 - **多账号轮换**：自动扫描本机 WorkBuddy 桌面端的登录凭据，多账号收进一个池子；一个号 429 / 积分耗尽就自动换下一个。
 - **积分自动化**：每天自动签到、领补偿和任务奖励，池子里所有号一起薅。
@@ -30,26 +54,26 @@ POST http://127.0.0.1:8788/v1/chat/completions
 └────────────────────────────────────┘
 ```
 
-## 快速开始
+### 快速开始
 
-1. 到 [Releases](../../releases) 下载 `WB Pool 本地版.exe`（约 84 MB，免安装）。
+1. 到 [Releases](../../releases) 下载 `wbpool-local-win-x64.exe`（约 84 MB，免安装）。
 2. 双击运行 —— 它会自动：
    - 扫描本机 WorkBuddy 登录过的账号（需要装过 WorkBuddy 并登录过一次）
    - 在 `127.0.0.1:8788` 起网关
    - 把「WB Pool」注册进 WorkBuddy 的模型列表
    - 打开浏览器进控制台
 3. 在 WorkBuddy 模型选择器里选 **WB Pool · 自动（多账号池）**，开聊。
-   想指定具体模型，先在控制台「网关」页勾选，重启 exe 后模型列表里就会出现独立条目。
+   想指定具体模型，先在控制台「网关」页勾选，点「写入 WorkBuddy」，模型列表里就会出现独立条目。
 
-**没装 WorkBuddy 也能用**：打开控制台 →「渠道」页 → 填任意一家免费渠道的 API Key。
+**没装 WorkBuddy 也能用**：打开控制台 →「聚合渠道」页 → 填任意一家免费渠道的 API Key。
 
-## 隐私与安全
+### 隐私与安全
 
 - 所有凭据只落在本机 `%USERPROFILE%\.wbpool\`，**不经过、不上传任何第三方服务器**。
 - 网关只绑定 `127.0.0.1`，局域网里别人碰不到。
 - 关闭 exe 的控制台窗口即停止服务；数据随时可整目录删除。
 
-## 从源码构建
+### 从源码构建
 
 要求：Node.js 22+，Windows。
 
@@ -68,7 +92,7 @@ node src/cli.mjs doctor # 体检：解密 / 上游连通性 / 渠道
 node tools/selftest.mjs # 池路由自测
 ```
 
-## 配置
+### 配置
 
 首启自动生成 `%USERPROFILE%\.wbpool\config.json`，常用项：
 
@@ -81,7 +105,7 @@ node tools/selftest.mjs # 池路由自测
 | `selectedModels` | `[]` | 要注册成独立模型条目的模型 id |
 | `automation` | 开 | 每日签到 / 奖励领取时间点 |
 
-## 开发者说明（源码结构）
+### 开发者说明（源码结构）
 
 ```
 local-entry.cjs        SEA 主脚本：解包运行时 → 加载 local.mjs
@@ -96,6 +120,85 @@ ui/                    控制台与登录页
 data/providers-registry.json  76 家免费渠道注册表
 ```
 
+---
+
+## English
+
+### What it does
+
+**WB Pool** aggregates **multiple WorkBuddy free-tier accounts** plus **76 third-party free providers** into a single OpenAI-compatible endpoint. One standalone exe — **double-click and it works** — everything runs locally, no server required.
+
+- **Multi-account rotation**: scans WorkBuddy desktop credentials on your machine, pools them together; a rate-limited or exhausted account is skipped automatically.
+- **Credit automation**: daily check-in, compensation and task rewards are claimed for every account.
+- **Free-provider fallback**: a built-in registry of 76 third-party providers (Groq / OpenRouter / SiliconFlow, etc.) — paste an API key in the console to enable.
+- **One endpoint**: everything is exposed at `http://127.0.0.1:8788/v1/chat/completions`, usable from WorkBuddy or any OpenAI-compatible client.
+- **Console**: accounts, credits, model selection, provider management and usage stats in one page.
+
+### Quick start
+
+1. Grab `wbpool-local-win-x64.exe` (~84 MB, no install) from [Releases](../../releases).
+2. Double-click it. It will:
+   - scan accounts you have logged into with the WorkBuddy desktop app
+   - start the gateway on `127.0.0.1:8788`
+   - register "WB Pool" into WorkBuddy's model list
+   - open the web console in your browser
+3. Pick **WB Pool · Auto** in WorkBuddy's model selector and chat away. To expose specific models, tick them on the **Gateway** page and click *Write into WorkBuddy*.
+
+**No WorkBuddy installed?** Still works: open the console → *Providers* tab → paste any free provider's API key.
+
+### Privacy & security
+
+- All credentials stay in `%USERPROFILE%\.wbpool\` on your machine — **nothing is sent to any third-party server**.
+- The gateway binds to `127.0.0.1` only.
+- Closing the exe window stops the service; delete the data folder to remove everything.
+
+### Build from source
+
+Requires Node.js 22+, Windows.
+
+```bash
+npm install --no-save postject
+node tools/build-local-exe.mjs
+# Output: dist/WB Pool 本地版.exe (also copied to your Desktop)
+```
+
+Or run straight from source:
+
+```bash
+node local.mjs          # what the exe does
+node src/cli.mjs serve  # gateway only
+node src/cli.mjs doctor # diagnose decryption / upstream / providers
+node tools/selftest.mjs # pool routing self-test
+```
+
+### Configuration
+
+A default `%USERPROFILE%\.wbpool\config.json` is created on first launch. Common fields:
+
+| Field | Default | Description |
+| --- | --- | --- |
+| `port` | `8788` | Gateway port (auto-increments if taken) |
+| `distribution` | `priority` | `priority` / `round-robin` / `balanced` / `sticky` / `expiry` |
+| `cooldownMs` | `60000` | 429 cooldown duration |
+| `providers` | `{}` | Third-party providers: `{ "groq": { "apiKey": "…", "enabled": true } }` |
+| `selectedModels` | `[]` | Model ids registered as standalone WorkBuddy entries |
+| `automation` | on | Daily check-in / reward schedule |
+
+### Source layout
+
+```
+local-entry.cjs        SEA bootstrap: unpack runtime → import local.mjs
+local.mjs              Local edition entry: scan, serve, register, open console
+src/core/gateway.mjs   HTTP gateway & console API (/v1/chat/completions + /api/*)
+src/core/accounts.mjs  Account pool: scanning, cooldown, distribution strategies
+src/core/at-rest.mjs   WorkBuddy credential decryption (AES-256-GCM envelopes)
+src/core/upstream.mjs  WorkBuddy upstream client, model catalog, check-in / credits
+src/core/providers.mjs Third-party provider relaying
+src/automation.mjs     Daily check-in / reward scheduler
+ui/                    Console & login pages
+data/providers-registry.json  Registry of 76 free providers
+```
+
 ## License
 
-[MIT](LICENSE)。`data/providers-registry.json` 移植自 [dsh-xdpool](https://github.com/XDTrees/dsh-xdpool)（MIT）。
+[MIT](LICENSE). `data/providers-registry.json` is ported from [dsh-xdpool](https://github.com/XDTrees/dsh-xdpool) (MIT).
