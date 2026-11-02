@@ -1,0 +1,26 @@
+# 依赖与产物
+node_modules/
+dist/
+
+# 私有部署数据（凭据 / 密钥，绝不入库）
+data/remote.json
+data/_deploy.tgz
+.workbuddy/
+
+# 云端部署私有脚本（含服务器地址与凭据引用）
+tools/deploy-cloud.mjs
+tools/setup-caddy.mjs
+tools/tc-*.mjs
+tools/patch*.py
+tools/build-exe.mjs
+tools/make-quiet-exe.py
+launcher.mjs
+launcher.cjs
+README-cloud-private.md
+
+# 参考资料（第三方未公开源码）
+ref/
+
+# 杂项
+*.log
+*.tmp

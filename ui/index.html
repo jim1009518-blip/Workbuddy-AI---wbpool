@@ -1,0 +1,772 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<base href="./">
+<title>WB Pool · 控制台</title>
+<style>
+  :root{--bg:#080b10;--panel:#0f151c;--panel-2:#141b24;--line:#1e2833;--line-soft:#18212b;--text:#e6edf3;--dim:#8b98a5;--dimmer:#5b6773;--green:#3ddc97;--amber:#f5a524;--blue:#4aa8ff;--red:#ff6b6b;--radius:14px}
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{background:radial-gradient(1200px 600px at 15% -10%,rgba(61,220,151,.07),transparent 60%),radial-gradient(900px 500px at 90% 0%,rgba(74,168,255,.06),transparent 55%),var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;font-size:14px;line-height:1.55;min-height:100vh;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1320px;margin:0 auto;padding:22px 20px 60px}
+  header{display:flex;align-items:center;gap:13px;margin-bottom:16px;flex-wrap:wrap}
+  .logo{width:38px;height:38px;border-radius:11px;flex:none;background:linear-gradient(135deg,#3ddc97,#2a9d8f 55%,#4aa8ff);display:grid;place-items:center;font-weight:800;font-size:15px;color:#061014;box-shadow:0 6px 20px rgba(61,220,151,.22)}
+  .brand h1{font-size:17px;margin:0;font-weight:650}
+  .brand p{margin:2px 0 0;font-size:12px;color:var(--dim)}
+  .spacer{flex:1}
+  .pill{display:inline-flex;align-items:center;gap:7px;padding:6px 12px;border-radius:999px;font-size:12px;background:var(--panel-2);border:1px solid var(--line);color:var(--dim)}
+  .dot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 8px rgba(61,220,151,.8)}
+  .dot.bad{background:var(--red);box-shadow:0 0 8px rgba(255,107,107,.8)}
+  nav{display:flex;gap:6px;margin-bottom:18px;flex-wrap:wrap;border-bottom:1px solid var(--line-soft);padding-bottom:10px}
+  nav button{background:transparent;border:1px solid transparent;color:var(--dim);padding:7px 14px;border-radius:9px;font:inherit;font-size:13px;cursor:pointer;transition:.15s}
+  nav button:hover{color:var(--text);background:var(--panel-2)}
+  nav button.on{background:var(--panel-2);border-color:var(--line);color:var(--text);font-weight:600}
+  nav button .n{font-size:10.5px;color:var(--dimmer);margin-left:5px}
+  button{font:inherit;font-size:12.5px;color:var(--text);cursor:pointer;background:var(--panel-2);border:1px solid var(--line);padding:7px 13px;border-radius:9px;transition:.16s}
+  button:hover{background:#1a2330;border-color:#2b3a49}
+  button:disabled{opacity:.5;cursor:not-allowed}
+  button.primary{background:linear-gradient(135deg,#2fa87a,#1f7d5c);border-color:#2fa87a;color:#eafff7;font-weight:600}
+  button.ghost{background:transparent}
+  button.danger{color:var(--red);border-color:#3a2530}
+  button.sm{padding:4px 9px;font-size:11.5px;border-radius:7px}
+  .metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(172px,1fr));gap:12px;margin-bottom:18px}
+  .metric{background:linear-gradient(180deg,var(--panel-2),var(--panel));border:1px solid var(--line);border-radius:var(--radius);padding:15px 17px;position:relative;overflow:hidden}
+  .metric::after{content:'';position:absolute;inset:0 0 auto 0;height:2px;background:linear-gradient(90deg,transparent,var(--green),transparent);opacity:.35}
+  .metric .k{font-size:11.5px;color:var(--dim)}
+  .metric .v{font-size:25px;font-weight:700;margin-top:3px;letter-spacing:-.5px;font-variant-numeric:tabular-nums}
+  .metric .s{font-size:11.5px;color:var(--dimmer);margin-top:2px}
+  .metric.green .v{color:var(--green)}.metric.amber .v{color:var(--amber)}.metric.blue .v{color:var(--blue)}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;margin-bottom:16px}
+  .card>h2{margin:0;padding:13px 17px;font-size:13px;font-weight:650;border-bottom:1px solid var(--line-soft);display:flex;align-items:center;gap:9px;color:#c7d2dc}
+  .card>h2 .tag{margin-left:auto;font-weight:400;font-size:11.5px;color:var(--dimmer);display:flex;gap:8px;align-items:center}
+  .card-body{padding:15px 17px}
+  .grid2{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:16px;align-items:start}
+  @media(max-width:940px){.grid2{grid-template-columns:1fr}}
+  .acct{display:flex;align-items:center;gap:13px;padding:13px 17px;border-bottom:1px solid var(--line-soft);flex-wrap:wrap}
+  .acct:last-child{border-bottom:none}
+  .acct:hover{background:rgba(255,255,255,.017)}
+  .avatar{width:36px;height:36px;border-radius:10px;flex:none;display:grid;place-items:center;font-weight:700;font-size:13px;color:#06231a;background:linear-gradient(135deg,#3ddc97,#2a9d8f)}
+  .avatar.cool{background:linear-gradient(135deg,#6b7783,#4a5560);color:#dbe3ea}
+  .acct .main{min-width:0;flex:1}
+  .acct .name{font-weight:600;font-size:13.5px;display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+  .acct .meta{font-size:11.5px;color:var(--dim);margin-top:2px;display:flex;gap:8px;flex-wrap:wrap}
+  .acct .right{text-align:right;flex:none;display:flex;align-items:center;gap:10px}
+  .acct .credits{font-size:17px;font-weight:700;color:var(--green);font-variant-numeric:tabular-nums}
+  .acct .credits small{font-size:11px;color:var(--dimmer);font-weight:400;margin-left:3px}
+  .badge{font-size:10.5px;padding:1.5px 7px;border-radius:5px;font-weight:600;background:rgba(61,220,151,.14);color:var(--green);border:1px solid rgba(61,220,151,.25)}
+  .badge.cool{background:rgba(245,165,36,.13);color:var(--amber);border-color:rgba(245,165,36,.25)}
+  .badge.dead{background:rgba(255,107,107,.13);color:var(--red);border-color:rgba(255,107,107,.25)}
+  .badge.region{background:rgba(74,168,255,.12);color:var(--blue);border-color:rgba(74,168,255,.22)}
+  .badge.off{background:#161e27;color:var(--dimmer);border-color:var(--line)}
+  .chart{display:flex;align-items:flex-end;gap:5px;height:104px;padding:0 2px}
+  .chart .bar{flex:1;display:flex;flex-direction:column;justify-content:flex-end;gap:2px;height:100%}
+  .chart .bar i{display:block;border-radius:3px 3px 1px 1px;min-height:1px;background:linear-gradient(180deg,#3ddc97,#1f7d5c)}
+  .chart .bar.zero i{background:#1b242e}
+  .chart .bar span{font-size:9.5px;color:var(--dimmer);text-align:center}
+  .auto-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px dashed var(--line-soft);font-size:12.5px}
+  .auto-row:last-child{border-bottom:none}
+  .auto-row .t{color:var(--dim);width:92px;flex:none;font-family:ui-monospace,monospace;font-size:11.5px}
+  .auto-row .r{flex:1;color:var(--text);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .gain{color:var(--green);font-weight:700}
+  .empty{padding:24px 17px;text-align:center;color:var(--dimmer);font-size:12.5px}
+  input,textarea,select{font:inherit;background:#0a1017;color:var(--text);border:1px solid var(--line);border-radius:9px;padding:8px 11px;outline:none;transition:.16s;width:100%}
+  input:focus,textarea:focus,select:focus{border-color:#2fa87a;box-shadow:0 0 0 3px rgba(61,220,151,.1)}
+  textarea{min-height:88px;resize:vertical;font-family:ui-monospace,monospace;font-size:12px;line-height:1.5}
+  .row{display:flex;gap:9px;align-items:center;flex-wrap:wrap}
+  .pv{display:grid;grid-template-columns:repeat(auto-fill,minmax(268px,1fr));gap:9px}
+  .pv-item{background:var(--panel-2);border:1px solid var(--line-soft);border-radius:10px;padding:11px 13px;display:flex;flex-direction:column;gap:7px}
+  .pv-item.on{border-color:rgba(61,220,151,.4);background:linear-gradient(180deg,rgba(61,220,151,.06),var(--panel-2))}
+  .pv-top{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .pv-name{font-weight:600;font-size:13px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .pv-meta{font-size:11px;color:var(--dimmer);font-family:ui-monospace,monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .pv-acts{display:flex;gap:6px;align-items:center}
+  .pv-acts input{flex:1;font-size:11.5px;padding:5px 8px}
+  .mono{font-family:ui-monospace,"Cascadia Code",monospace;font-size:12px}
+  .kv{display:grid;grid-template-columns:96px 1fr;gap:9px 14px;font-size:12.5px;align-items:center}
+  .kv .k{color:var(--dim)}
+  .copy{background:#0a1017;border:1px solid var(--line);border-radius:8px;padding:7px 10px;font-family:ui-monospace,monospace;font-size:11.5px;word-break:break-all;color:#b8c6d3}
+  .modal-bg{position:fixed;inset:0;background:rgba(3,6,10,.78);display:none;place-items:center;z-index:50;padding:20px;backdrop-filter:blur(3px)}
+  .modal-bg.on{display:grid}
+  .modal{width:min(560px,100%);background:var(--panel);border:1px solid var(--line);border-radius:16px;overflow:hidden;box-shadow:0 30px 80px rgba(0,0,0,.6)}
+  .modal h3{margin:0;padding:15px 18px;font-size:14px;border-bottom:1px solid var(--line-soft)}
+  .modal .body{padding:16px 18px}
+  .modal .foot{padding:13px 18px;border-top:1px solid var(--line-soft);display:flex;gap:9px;justify-content:flex-end}
+  .notice{border-radius:10px;padding:11px 13px;font-size:12px;line-height:1.65;margin-bottom:12px}
+  .notice.warn{background:rgba(245,165,36,.09);border:1px solid rgba(245,165,36,.25);color:#f0c674}
+  .notice.info{background:rgba(74,168,255,.08);border:1px solid rgba(74,168,255,.22);color:#9ecbff}
+  .toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(14px);background:#18222d;border:1px solid #2a3949;color:var(--text);padding:10px 18px;border-radius:10px;font-size:12.5px;opacity:0;pointer-events:none;transition:.24s;z-index:99;box-shadow:0 10px 30px rgba(0,0,0,.5);max-width:80vw;text-align:center}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  .hide{display:none!important}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo">WB</div>
+    <div class="brand"><h1>WB Pool</h1><p>WorkBuddy 账号优先 · 第三方渠道兜底 · 积分自动化</p></div>
+    <div class="spacer"></div>
+    <div class="pill" id="health"><span class="dot"></span><span>连接中…</span></div>
+    <button onclick="refresh(true)">刷新</button>
+    <button class="ghost" onclick="logout()">退出</button>
+  </header>
+
+  <nav id="nav">
+    <button class="on" data-tab="pool">账号池<span class="n" id="n-pool"></span></button>
+    <button data-tab="providers">聚合渠道<span class="n" id="n-pv"></span></button>
+    <button data-tab="channels">登录渠道<span class="n">13</span></button>
+    <button data-tab="stats">数据看板</button>
+    <button data-tab="routes">路由<span class="n" id="n-rt"></span></button>
+    <button data-tab="gateway">网关</button>
+  </nav>
+
+  <section id="tab-pool">
+    <div class="metrics">
+      <div class="metric green"><div class="k">池内账号</div><div class="v" id="m-total">-</div><div class="s" id="m-health">-</div></div>
+      <div class="metric blue"><div class="k">今日调用</div><div class="v" id="m-calls">-</div><div class="s" id="m-failover">-</div></div>
+      <div class="metric amber"><div class="k">今日积分</div><div class="v" id="m-credit">-</div><div class="s" id="m-tokens">-</div></div>
+      <div class="metric"><div class="k">剩余积分</div><div class="v" id="m-left">-</div><div class="s" id="m-third">-</div></div>
+    </div>
+    <div class="grid2">
+      <div class="card">
+        <h2>账号池 <span class="tag" id="dist-tag">-</span></h2>
+        <div id="accounts"><div class="empty">读取中…</div></div>
+        <div class="card-body" style="border-top:1px solid var(--line-soft);display:flex;gap:8px;flex-wrap:wrap">
+          <button class="primary" onclick="syncFromLocal()">⟳ 从本机同步</button>
+          <button onclick="openImport()">＋ 手动导入</button>
+          <button onclick="act('rescan','重新检测')">重新检测</button>
+          <button onclick="act('credits','刷新积分')">刷新积分</button>
+          <button onclick="act('cooldown-reset','清除冷却')">清除冷却</button>
+          <button onclick="act('checkin','立即签到')">立即签到</button>
+        </div>
+      </div>
+      <div class="card">
+        <h2>积分自动化 <span class="tag" id="auto-tag">-</span></h2>
+        <div class="card-body" id="automation"><div class="empty">读取中…</div></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="tab-providers" class="hide">
+    <div class="notice info">注册表里 76 家厂商的免费额度。<b>填了 API Key 就自动启用</b>，WorkBuddy 账号全部不可用时才会落到这里。</div>
+    <div class="card">
+      <h2>渠道
+        <span class="tag">
+          <input id="pv-search" placeholder="搜索厂商…" style="width:150px;padding:5px 9px;font-size:11.5px" oninput="renderProviders()">
+          <select id="pv-filter" style="width:auto;padding:5px 8px;font-size:11.5px" onchange="renderProviders()">
+            <option value="">全部</option><option value="on">已启用</option><option value="key">已填 Key</option>
+          </select>
+        </span>
+      </h2>
+      <div class="card-body"><div class="pv" id="providers"><div class="empty">读取中…</div></div></div>
+    </div>
+  </section>
+
+  <section id="tab-channels" class="hide">
+    <div class="notice warn">WorkBuddy 的令牌由腾讯 SSO 铸造并与设备绑定，<b>无法在服务器上扫码登录</b>。要扩展 WorkBuddy 账号池请用「导入账号」：在任意一台装了 WorkBuddy 的电脑登录后，把 <span class="mono">auth/*.info</span> 的内容粘进去即可。</div>
+    <div class="card">
+      <h2>十三家登录渠道 <span class="tag">登录后把 API Key 填进「聚合渠道」</span></h2>
+      <div class="card-body"><div class="pv" id="channels"></div></div>
+    </div>
+  </section>
+
+  <section id="tab-stats" class="hide">
+    <div class="card">
+      <h2>近 14 天 <span class="tag">调用数</span></h2>
+      <div class="card-body">
+        <div class="chart" id="chart"></div>
+        <div class="row" style="margin-top:12px;font-size:11.5px;color:var(--dim)">
+          <span>失败 <b id="s-fail">0</b></span><span>换号救回 <b id="s-failover">0</b></span><span>第三方 <b id="s-third">0</b></span>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>按账号 / 按模型 <span class="tag">今日</span></h2>
+      <div class="card-body" id="breakdown"><div class="empty">读取中…</div></div>
+    </div>
+  </section>
+
+  <section id="tab-routes" class="hide">
+    <div class="notice info">把几个模型串成一条链：调用 <span class="mono">model=链ID</span> 时按顺序依次尝试，前一个不行自动换下一个。模型写法：<span class="mono">wbpool/hy3</span> 或 <span class="mono">渠道id/模型名</span>。</div>
+    <div class="card">
+      <h2>模型链 <span class="tag"><button class="sm" onclick="addRoute()">＋ 新建链</button></span></h2>
+      <div class="card-body" id="routes"><div class="empty">还没有模型链</div></div>
+    </div>
+  </section>
+
+  <section id="tab-gateway" class="hide">
+    <div class="card">
+      <h2>OpenAI 兼容端点</h2>
+      <div class="card-body"><div class="kv" id="gw-info"><div class="k">读取中</div><div>…</div></div></div>
+    </div>
+    <div class="card">
+      <h2>在 WorkBuddy 里使用</h2>
+      <div class="card-body">
+        <div class="notice info">勾选下面的模型后点「保存选择」，再点「写入 WorkBuddy」，它们就会以独立条目的形式出现在 WorkBuddy 的模型选择器里——选哪个就用哪家的具体模型，不再是「自动」。</div>
+        <div class="kv">
+          <div class="k">接口地址</div><div class="copy" id="gw-url">-</div>
+          <div class="k">API Key</div><div class="copy" id="gw-key">-</div>
+          <div class="k">已选模型</div><div id="gw-models">-</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>模型选择
+        <span class="tag">
+          <input id="m-search" placeholder="搜索模型…" style="width:140px;padding:5px 9px;font-size:11.5px" oninput="renderModelPicker()">
+          <span id="m-count" style="font-size:11.5px"></span>
+          <button class="sm" onclick="selectNone()">全不选</button>
+          <button class="sm primary" onclick="saveSelection()">保存选择</button>
+          <button class="sm" onclick="applyToWorkbuddy()">写入 WorkBuddy</button>
+        </span>
+      </h2>
+      <div class="card-body" id="model-picker"><div class="empty">读取模型目录…</div></div>
+    </div>
+  </section>
+</div>
+
+<div class="modal-bg" id="modal-import">
+  <div class="modal">
+    <h3>导入 WorkBuddy 账号</h3>
+    <div class="body">
+      <div class="notice info">
+        <b>推荐：点下面的「从本机刷新」</b>，会自动扫描这台电脑上的 WorkBuddy（国内版 + 国际版）
+        以及其它已登录的渠道，按<b>账号昵称</b>命名并入池，不用手动复制。<br>
+        <span style="color:var(--dimmer)">手动方式：打开 <span class="mono">%LOCALAPPDATA%\CodeBuddyExtension\Data\Public\auth\*.info</span>
+        把内容粘到下面；也接受 <span class="mono">{"accessToken":"...","refreshToken":"..."}</span>。</span>
+      </div>
+      <div class="row" style="margin-bottom:12px">
+        <button class="primary" style="flex:1" onclick="syncFromLocal('modal-import')">⟳ 从本机刷新（自动扫描并添加）</button>
+      </div>
+      <textarea id="imp-raw" placeholder='粘贴 .info 文件内容，或 {"accessToken":"...","refreshToken":"...","domain":"www.workbuddy.cn"}'></textarea>
+      <div class="row" style="margin-top:10px"><input id="imp-label" placeholder="备注名（可选，例：小号A）" style="flex:1"></div>
+    </div>
+    <div class="foot">
+      <button class="ghost" onclick="closeModal('modal-import')">取消</button>
+      <button class="primary" onclick="doImport()">导入并验证</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+let state = null, providersData = [], routesData = [];
+
+const CHANNELS = [
+  { id:'buddy', name:'WorkBuddy 国内版', org:'腾讯', note:'与 CodeBuddy 共用端点，DeepSeek / Kimi / GLM 免费线', url:'https://copilot.tencent.com' },
+  { id:'workbuddy', name:'WorkBuddy 国际版', org:'腾讯', note:'独立账号体系，积分与国内版不互通', url:'https://www.workbuddy.ai' },
+  { id:'codearts', name:'CodeArts', org:'华为云', note:'免费体验套餐，DeepSeek / GLM / openPangu 每日额度', url:'https://devcloud.cn-north-4.huaweicloud.com/codeartside/home' },
+  { id:'lobsterai', name:'LobsterAI', org:'有道', note:'每日签到领积分，积分换模型额度', url:'https://lobsterai.youdao.com' },
+  { id:'qoder', name:'Qoder 国际版', org:'阿里云', note:'每日 100 Credits', url:'https://qoder.com' },
+  { id:'qodercn', name:'Qoder 国内版', org:'阿里云', note:'每日 100 Credits，国内端点', url:'https://qoder.com.cn' },
+  { id:'trae', name:'TRAE', org:'字节跳动', note:'手机号注册送免费额度，按天重置', url:'https://www.trae.ai' },
+  { id:'cline', name:'Cline', org:'Cline Bot', note:'绑定 GitHub 后送美元额度', url:'https://app.cline.bot' },
+  { id:'loomy', name:'Loomy', org:'讯飞星火', note:'每日免费额度', url:'https://loomy.xunfei.cn' },
+  { id:'raccoon', name:'Raccoon', org:'Raccoon', note:'免费额度按天重置', url:'https://raccoon.ai' },
+  { id:'minimax', name:'MiniMax Code', org:'MiniMax', note:'每日免费额度', url:'https://www.minimaxi.com' },
+  { id:'zcode', name:'ZCode', org:'智谱', note:'GLM 系列免费线', url:'https://zcode.bigmodel.cn' },
+  { id:'gemini', name:'Gemini', org:'Google', note:'免费额度按天重置', url:'https://gemini.google.com' },
+];
+
+function toast(msg, ms = 2600) {
+  const el = $('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.classList.remove('show'), ms);
+}
+
+async function api(path, opts = {}) {
+  const res = await fetch(path, { ...opts, headers: { 'Content-Type': 'application/json', ...(opts.headers || {}) } });
+  if (res.status === 401) { location.replace('login'); throw new Error('需要登录'); }
+  return res;
+}
+
+const fmt = (n) => (n >= 10000 ? (n / 1000).toFixed(1) + 'k' : String(n ?? 0));
+const fmtCredit = (n) => (n >= 100 ? Math.round(n) : (Math.round(n * 100) / 100).toString());
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c]));
+function timeLeft(ms) { const s = Math.round(ms / 1000); if (s < 60) return s + ' 秒'; if (s < 3600) return Math.round(s / 60) + ' 分'; return (s / 3600).toFixed(1) + ' 小时'; }
+
+$('nav').addEventListener('click', (ev) => {
+  const btn = ev.target.closest('button[data-tab]');
+  if (!btn) return;
+  const tab = btn.dataset.tab;
+  document.querySelectorAll('#nav button').forEach((b) => b.classList.toggle('on', b === btn));
+  ['pool','providers','channels','stats','routes','gateway'].forEach((s) => $('tab-' + s).classList.toggle('hide', s !== tab));
+  if (tab === 'providers' && providersData.length === 0) loadProviders();
+  if (tab === 'routes' && routesData.length === 0) loadRoutes();
+  if (tab === 'gateway') loadGateway();
+  if (tab === 'channels') renderChannels();
+});
+
+function renderAccounts(accounts) {
+  const box = $('accounts');
+  if (!accounts.length) { box.innerHTML = '<div class="empty">池里还没有账号。<br>点「＋ 导入账号」粘贴凭据，或在本机双击 WB Pool 同步。</div>'; return; }
+  box.innerHTML = accounts.map((a) => {
+    const cooling = a.cooldownMs > 0, dead = a.cooldownReason === 'dead';
+    const initial = (a.label || '?').replace(/[^0-9A-Za-z\u4e00-\u9fa5]/g, '').slice(-2) || 'WB';
+    return `<div class="acct">
+      <div class="avatar ${cooling ? 'cool' : ''}">${esc(initial)}</div>
+      <div class="main">
+        <div class="name">${esc(a.label)}
+          <span class="badge region">${a.region === 'global' ? '国际版' : '国内版'}</span>
+          ${cooling ? `<span class="badge ${dead ? 'dead' : 'cool'}">${dead ? '凭据失效' : '冷却 ' + timeLeft(a.cooldownMs)}</span>` : '<span class="badge">可用</span>'}
+        </div>
+        <div class="meta">
+          <span>${a.checkin ? `连续 ${a.checkin.streakDays} 天 · 今日${a.checkin.todayCheckedIn ? '已签' : '未签'}` : '签到未查'}</span>
+          <span>·</span><span>令牌 ${a.expiresAt ? new Date(a.expiresAt).toLocaleDateString('zh-CN') : '-'}</span>
+          <span>·</span><span>请求 ${a.requestCount}</span>
+        </div>
+      </div>
+      <div class="right">
+        <div class="credits">${a.credits ? fmtCredit(a.credits.total) : '—'}<small>分</small></div>
+        <button class="sm ghost" onclick="renameAccount('${esc(a.id)}','${esc(a.label)}')">改名</button>
+        <button class="sm danger" onclick="removeAccount('${esc(a.id)}','${esc(a.label)}')">删除</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function renameAccount(id, old) {
+  const label = prompt('新的备注名', old);
+  if (!label || label === old) return;
+  await api('api/accounts/rename', { method: 'POST', body: JSON.stringify({ id, label }) });
+  toast('已改名'); refresh();
+}
+
+async function removeAccount(id, label) {
+  if (!confirm(`确定从池里删除「${label}」？`)) return;
+  const res = await api('api/accounts/remove', { method: 'POST', body: JSON.stringify({ id }) });
+  const d = await res.json();
+  toast(d.ok ? '已删除' : '删除失败'); refresh();
+}
+
+/**
+ * 从本机刷新。
+ *
+ * 网页读不到本机磁盘，所以这里用自定义协议 wbpool:// 唤起本机的静默同步器
+ * （计划的 exe，无窗口），它扫完会把账号推到云端；这边轮询等结果。
+ */
+let syncBusy = false;
+function syncFromLocal(closeId) {
+  if (syncBusy) { toast('正在同步中…'); return; }
+  syncBusy = true;
+  const before = state?.accounts?.length ?? 0;
+  const beforeIds = new Set((state?.accounts || []).map((a) => a.id));
+  toast('正在扫描本机 WorkBuddy 账号…', 6000);
+
+  // 用隐藏 iframe 触发自定义协议，避免页面被导航走
+  try {
+    const f = document.createElement('iframe');
+    f.style.display = 'none';
+    f.src = 'wbpool://sync';
+    document.body.appendChild(f);
+    setTimeout(() => f.remove(), 4000);
+  } catch (e) { /* 协议不可用就走下面的降级提示 */ }
+
+  let n = 0;
+  const timer = setInterval(async () => {
+    n++;
+    await refresh(false);
+    const now = state?.accounts || [];
+    const added = now.filter((a) => !beforeIds.has(a.id));
+    if (added.length > 0) {
+      clearInterval(timer);
+      syncBusy = false;
+      if (closeId) closeModal(closeId);
+      toast(`已添加 ${added.length} 个账号：${added.map((a) => a.label).join('、')}`, 6000);
+      return;
+    }
+    if (n >= 10) {
+      clearInterval(timer);
+      syncBusy = false;
+      toast('没等到新账号。请双击桌面「WB Pool」，或在浏览器提示时允许打开外部程序', 8000);
+    }
+  }, 2000);
+}
+
+function openImport() { $('modal-import').classList.add('on'); $('imp-raw').focus(); }
+function closeModal(id) { $(id).classList.remove('on'); }
+
+async function doImport() {
+  const raw = $('imp-raw').value.trim();
+  if (!raw) { toast('请先粘贴内容'); return; }
+  toast('正在导入并验证…', 8000);
+  try {
+    const res = await api('api/accounts/import', { method: 'POST', body: JSON.stringify({ raw, label: $('imp-label').value.trim() }) });
+    const d = await res.json();
+    if (!res.ok || d.ok === false) { toast('导入失败：' + (d.error || res.status)); return; }
+    closeModal('modal-import');
+    $('imp-raw').value = ''; $('imp-label').value = '';
+    toast(`导入成功（池内 ${d.total} 个）· ${d.probe}`, 4000);
+    refresh();
+  } catch (e) { toast('导入失败：' + e.message); }
+}
+
+function renderAutomation(a) {
+  const rows = [], t = a?.today;
+  [['checkin','签到'],['rewards','补偿'],['tasks','任务奖励']].forEach(([key, label]) => {
+    const v = t?.[key];
+    rows.push(v
+      ? `<div class="auto-row"><span class="t">${new Date(v.at).toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit',hour12:false})}</span><span class="r">${label}</span><span class="gain">+${v.credit || 0}</span></div>`
+      : `<div class="auto-row"><span class="t">-</span><span class="r" style="color:var(--dimmer)">${label} 今日未跑</span></div>`);
+  });
+  (a?.recent || []).slice(-5).reverse().forEach((day) => {
+    const total = (day.checkin?.credit || 0) + (day.rewards?.credit || 0) + (day.tasks?.credit || 0);
+    if (total) rows.push(`<div class="auto-row"><span class="t">${day.date.slice(5)}</span><span class="r">当日收益</span><span class="gain">+${total}</span></div>`);
+  });
+  $('automation').innerHTML = rows.join('');
+  $('auto-tag').textContent = a?.enabled ? `每日 ${a.checkinAt}` : '已关闭';
+}
+
+async function loadProviders() {
+  try {
+    const res = await api('api/providers');
+    const d = await res.json();
+    providersData = d.providers || [];
+    $('n-pv').textContent = providersData.filter((p) => p.enabled).length + '/' + providersData.length;
+    renderProviders();
+  } catch (e) { $('providers').innerHTML = `<div class="empty">读取失败：${esc(e.message)}</div>`; }
+}
+
+function renderProviders() {
+  const q = ($('pv-search').value || '').toLowerCase();
+  const f = $('pv-filter').value;
+  let list = providersData;
+  if (q) list = list.filter((p) => (p.name + p.id + (p.notes || '')).toLowerCase().includes(q));
+  if (f === 'on') list = list.filter((p) => p.enabled);
+  if (f === 'key') list = list.filter((p) => p.hasKey);
+  if (!list.length) { $('providers').innerHTML = '<div class="empty">没有匹配的渠道</div>'; return; }
+  $('providers').innerHTML = list.slice(0, 120).map((p) => `
+    <div class="pv-item ${p.enabled ? 'on' : ''}">
+      <div class="pv-top"><span class="pv-name">${esc(p.name)}</span>
+        ${p.enabled ? '<span class="badge">已启用</span>' : p.hasKey ? '<span class="badge cool">待启用</span>' : '<span class="badge off">未配置</span>'}
+      </div>
+      <div class="pv-meta" title="${esc(p.baseUrl)}">${esc(p.baseUrl || '-')}</div>
+      <div class="pv-acts">
+        <input placeholder="粘贴 API Key" onkeydown="if(event.key==='Enter')saveProvider('${esc(p.id)}',this.value,true)">
+        <button class="sm" onclick="saveProvider('${esc(p.id)}',this.previousElementSibling.value,true)">保存</button>
+      </div>
+      <div class="pv-acts">
+        <button class="sm ghost" onclick="saveProvider('${esc(p.id)}','',${p.enabled ? 'false' : 'true'})">${p.enabled ? '停用' : '启用'}</button>
+        <button class="sm ghost" onclick="testProvider('${esc(p.id)}')">测试</button>
+        <span style="font-size:10.5px;color:var(--dimmer);margin-left:auto">${p.models.length} 模型</span>
+      </div>
+    </div>`).join('');
+}
+
+async function saveProvider(id, apiKey, enabled) {
+  const body = { id, enabled };
+  if (apiKey) body.apiKey = apiKey;
+  const res = await api('api/providers', { method: 'POST', body: JSON.stringify(body) });
+  const d = await res.json();
+  if (!res.ok) { toast('保存失败：' + (d.error || res.status)); return; }
+  toast('已保存'); await loadProviders();
+}
+
+async function testProvider(id) {
+  toast('测试中…', 15000);
+  const res = await api('api/providers/test', { method: 'POST', body: JSON.stringify({ id }) });
+  const d = await res.json();
+  toast(d.ok ? `通了（${d.ms}ms）` : `失败：${d.error}`, 5000);
+}
+
+let channelsState = { capability: {}, codearts: null };
+
+async function renderChannels() {
+  try {
+    const d = await (await api('api/channels')).json();
+    channelsState = d;
+  } catch (e) { /* 读不到就只显示静态信息 */ }
+  const cap = channelsState.capability || {};
+  const ca = channelsState.codearts || {};
+  $('channels').innerHTML = CHANNELS.map((c) => {
+    const able = cap[c.id]?.cloudLogin === true;
+    const reason = cap[c.id]?.reason || '';
+    let action;
+    if (c.id === 'codearts') {
+      if (ca.loggedIn) {
+        action = `<span class="badge">已登录 ${esc(ca.user || '')}</span>
+           <button class="sm ghost" onclick="pollCodeartsNow()">拉模型</button>
+           <button class="sm danger" onclick="logoutCodearts()">退出</button>`;
+      } else if (cap[c.id]?.localTool) {
+        action = `<button class="sm" onclick="toast('本机运行：node tools/codearts-login.mjs（需本机装 CodeArts IDE）', 7000)">本机登录器</button>`;
+      } else {
+        action = `<span class="badge off">不可用</span>`;
+      }
+    } else if (able) {
+      action = `<button class="sm" onclick="toast('该渠道云端登录尚未接入')">立即登录</button>`;
+    } else {
+      action = `<span class="badge off" title="${esc(reason)}">需本机登录</span>`;
+    }
+    return `<div class="pv-item ${c.id === 'codearts' && ca.loggedIn ? 'on' : ''}">
+      <div class="pv-top">
+        <span class="pv-name">${esc(c.name)}</span>
+        <span class="badge region">${esc(c.org)}</span>
+      </div>
+      <div style="font-size:11.5px;color:var(--dim);line-height:1.6">${esc(c.note)}</div>
+      <div style="font-size:11px;color:var(--dimmer);line-height:1.5">${able ? '✓ 可在云端登录' : '· ' + esc(reason)}</div>
+      <div class="pv-acts">
+        ${action}
+        <a href="${esc(c.url)}" target="_blank" rel="noopener" style="text-decoration:none;margin-left:auto"><button class="sm ghost">官网</button></a>
+      </div>
+    </div>`;
+  }).join('');
+  $('channels').dataset.done = '1';
+}
+
+let codeartsTimer = null;
+
+async function loginCodearts() {
+  toast('正在生成登录链接…');
+  try {
+    const res = await api('api/channels/codearts/start', { method: 'POST', body: '{}' });
+    const d = await res.json();
+    if (!res.ok || !d.ok) { toast('生成失败：' + (d.error || res.status), 5000); return; }
+    window.open(d.loginUrl, '_blank', 'noopener');
+    toast('已打开登录页，请在那边完成华为云登录…', 6000);
+    pollCodearts(d.id, 0);
+  } catch (e) { toast('失败：' + e.message); }
+}
+
+async function pollCodearts(id, n) {
+  if (n > 150) { toast('等待超时，可稍后刷新查看', 5000); return; }
+  try {
+    const d = await (await api('api/channels/codearts/status?id=' + encodeURIComponent(id))).json();
+    if (d.status === 'ok') {
+      toast(`登录成功${d.user ? '：' + d.user : ''}${d.models ? ' · ' + d.models + ' 个模型' : ''}`, 6000);
+      renderChannels();
+      return;
+    }
+    if (d.status === 'error') { toast('登录失败：' + (d.error || ''), 6000); renderChannels(); return; }
+  } catch (e) { /* 继续轮询 */ }
+  codeartsTimer = setTimeout(() => pollCodearts(id, n + 1), 2000);
+}
+
+async function pollCodeartsNow() {
+  const res = await api('api/channels/codearts/models', { method: 'POST', body: '{}' });
+  const d = await res.json();
+  toast(d.ok ? `凭据有效，${d.models.length} 个模型` : '失败：' + (d.error || ''), 5000);
+}
+
+async function logoutCodearts() {
+  if (!confirm('退出 CodeArts？')) return;
+  await api('api/channels/codearts/logout', { method: 'POST', body: '{}' });
+  toast('已退出'); renderChannels();
+}
+
+function renderChart(recent) {
+  const max = Math.max(1, ...recent.map((d) => d.calls));
+  $('chart').innerHTML = recent.map((d) => {
+    const h = Math.max(2, Math.round((d.calls / max) * 84));
+    return `<div class="bar ${d.calls === 0 ? 'zero' : ''}" title="${d.date}：${d.calls} 次 / ${fmtCredit(d.credit)} 积分"><i style="height:${h}px"></i><span>${d.date.slice(5)}</span></div>`;
+  }).join('') || '<div class="empty">暂无数据</div>';
+}
+
+function renderBreakdown(today) {
+  const ba = Object.entries(today.byAccount || {});
+  const bm = Object.entries(today.byModel || {});
+  if (!ba.length && !bm.length) { $('breakdown').innerHTML = '<div class="empty">今天还没有调用</div>'; return; }
+  const nameOf = (id) => state?.accounts?.find((a) => a.id === id)?.label || id.slice(0, 10);
+  const row = (label, v) => `<div class="auto-row"><span class="r">${esc(label)}</span><span class="t" style="width:70px;text-align:right">${v.calls} 次</span><span class="gain" style="width:60px;text-align:right">${fmtCredit(v.credit)}</span></div>`;
+  $('breakdown').innerHTML =
+    (ba.length ? '<div style="font-size:11px;color:var(--dimmer);margin-bottom:4px">按账号</div>' + ba.map(([k, v]) => row(nameOf(k), v)).join('') : '') +
+    (bm.length ? '<div style="font-size:11px;color:var(--dimmer);margin:12px 0 4px">按模型</div>' + bm.map(([k, v]) => row(k, v)).join('') : '');
+}
+
+async function loadRoutes() {
+  try {
+    const res = await api('api/routes');
+    const d = await res.json();
+    routesData = d.routes || [];
+    renderRoutes();
+  } catch (e) { $('routes').innerHTML = `<div class="empty">读取失败：${esc(e.message)}</div>`; }
+}
+
+function renderRoutes() {
+  $('n-rt').textContent = routesData.length || '';
+  if (!routesData.length) { $('routes').innerHTML = '<div class="empty">还没有模型链，点右上角新建</div>'; return; }
+  $('routes').innerHTML = routesData.map((r, i) => `
+    <div class="pv-item" style="margin-bottom:9px">
+      <div class="pv-top">
+        <span class="pv-name">${esc(r.name)}</span>
+        <span class="badge region mono">${esc(r.id)}</span>
+        <span class="badge off">${r.strategy === 'round-robin' ? '轮换' : '顺序'}</span>
+        <button class="sm danger" style="margin-left:auto" onclick="removeRoute(${i})">删除</button>
+      </div>
+      <div class="mono" style="font-size:11.5px;color:var(--dim);word-break:break-all">${r.models.map((m, j) => (j ? ' → ' : '') + esc(m)).join('')}</div>
+    </div>`).join('');
+}
+
+async function addRoute() {
+  const id = prompt('链 ID（调用时用作 model，例：fast）');
+  if (!id) return;
+  const modelsRaw = prompt('模型列表，用逗号分隔（例：wbpool/hy3,groq/llama-3.3-70b）');
+  if (!modelsRaw) return;
+  routesData.push({ id, name: id, strategy: 'sequential', models: modelsRaw.split(',').map((s) => s.trim()).filter(Boolean) });
+  await saveRoutes();
+}
+
+async function removeRoute(i) { routesData.splice(i, 1); await saveRoutes(); }
+
+async function saveRoutes() {
+  const res = await api('api/routes', { method: 'POST', body: JSON.stringify({ routes: routesData }) });
+  const d = await res.json();
+  if (!res.ok) { toast('保存失败'); return; }
+  routesData = d.routes; renderRoutes(); toast('已保存');
+}
+
+let modelCatalog = { workbuddy: [], thirdParty: [] };
+let modelSelection = new Set();
+
+async function loadModels() {
+  try {
+    const d = await (await api('api/models')).json();
+    modelCatalog = { workbuddy: d.workbuddy || [], thirdParty: d.thirdParty || [] };
+    modelSelection = new Set(d.selection || []);
+    renderModelPicker();
+  } catch (e) {
+    $('model-picker').innerHTML = `<div class="empty">读取失败：${esc(e.message)}</div>`;
+  }
+}
+
+function renderModelPicker() {
+  const q = ($('m-search').value || '').toLowerCase();
+  const match = (m) => !q || (m.name + ' ' + m.vendor + ' ' + m.id).toLowerCase().includes(q);
+  const wb = modelCatalog.workbuddy.filter(match);
+  const tp = modelCatalog.thirdParty.filter(match);
+
+  const item = (m) => {
+    const on = modelSelection.has(m.id);
+    return `<label class="pv-item" style="flex-direction:row;align-items:center;gap:9px;cursor:pointer;${on ? 'border-color:rgba(61,220,151,.45)' : ''}">
+      <input type="checkbox" style="width:15px;height:15px;flex:none;accent-color:#3ddc97" ${on ? 'checked' : ''}
+        onchange="toggleModel('${esc(m.id)}', this.checked)">
+      <span style="flex:1;min-width:0">
+        <span class="pv-name" style="display:block">${esc(m.name)}</span>
+        <span class="pv-meta">${esc(m.vendor)}${m.free ? ' · <span class="free">免费</span>' : (m.credits ? ' · x' + m.credits : '')}</span>
+      </span>
+    </label>`;
+  };
+
+  const section = (title, list, empty) => list.length
+    ? `<div style="font-size:11.5px;color:var(--dimmer);margin:4px 0 8px">${title}（${list.length}）</div><div class="pv">${list.map(item).join('')}</div>`
+    : (empty ? `<div class="empty" style="padding:12px">${empty}</div>` : '');
+
+  $('model-picker').innerHTML =
+    section('WorkBuddy 账号池', wb) +
+    (tp.length ? '<div style="height:14px"></div>' + section('第三方渠道', tp) : '') +
+    (!wb.length && !tp.length ? '<div class="empty">没有匹配的模型</div>' : '');
+
+  $('m-count').textContent = `已选 ${modelSelection.size} 个`;
+}
+
+function toggleModel(id, on) {
+  if (on) modelSelection.add(id); else modelSelection.delete(id);
+  renderModelPicker();
+}
+
+function selectNone() {
+  modelSelection.clear();
+  renderModelPicker();
+}
+
+async function saveSelection() {
+  const res = await api('api/models/selection', {
+    method: 'POST',
+    body: JSON.stringify({ ids: [...modelSelection] }),
+  });
+  const d = await res.json();
+  if (!res.ok) { toast('保存失败'); return; }
+  toast(`已保存 ${d.selection.length} 个模型，点「写入 WorkBuddy」生效`, 5000);
+  loadGateway();
+}
+
+/** 让本机 exe 把勾选的模型写进 WorkBuddy 的 models.json。 */
+function applyToWorkbuddy() {
+  toast('正在写入 WorkBuddy 模型列表…', 6000);
+  try {
+    const f = document.createElement('iframe');
+    f.style.display = 'none';
+    f.src = 'wbpool://sync';
+    document.body.appendChild(f);
+    setTimeout(() => f.remove(), 4000);
+  } catch (e) { /* 走下面的提示 */ }
+  setTimeout(() => {
+    toast('已触发。若 WorkBuddy 里没出现，请双击桌面「WB Pool」再试', 7000);
+    loadGateway();
+  }, 6000);
+}
+
+async function loadGateway() {
+  try {
+    const res = await api('api/gateway');
+    const d = await res.json();
+    const base = location.href.replace(/\/[^/]*$/, '/');
+    $('gw-url').textContent = base + 'v1/chat/completions';
+    $('gw-key').textContent = d.gatewayKey;
+    $('gw-models').innerHTML = d.selected > 0
+      ? `<span class="mono">${d.selected} 个已勾选</span> · 网关共 ${d.modelCount} 个可选`
+      : '<span style="color:var(--amber)">还没勾选，去下面选</span>';
+    if (!modelCatalog.workbuddy.length) loadModels();
+    $('gw-info').innerHTML = `
+      <div class="k">接口</div><div class="copy">${esc(base)}v1/chat/completions</div>
+      <div class="k">模型列表</div><div class="copy">${esc(base)}v1/models</div>
+      <div class="k">默认模型</div><div class="mono">${esc(d.defaultModel)}</div>
+      <div class="k">鉴权</div><div class="mono">Authorization: Bearer &lt;API Key&gt;</div>`;
+  } catch (e) { $('gw-info').innerHTML = `<div class="k">读取失败</div><div>${esc(e.message)}</div>`; }
+}
+
+async function act(path, label) {
+  toast(label + '…', 8000);
+  try {
+    const res = await api('api/' + path, { method: 'POST', body: '{}' });
+    const d = await res.json();
+    if (path === 'checkin' && d.results) {
+      toast(`签到完成，共 +${d.results.reduce((s, r) => s + (r.credit || 0), 0)} 分`);
+    } else toast(label + '完成');
+    refresh();
+  } catch (e) { toast(label + '失败：' + e.message); }
+}
+
+async function logout() { await api('api/logout', { method: 'POST', body: '{}' }); location.replace('login'); }
+
+async function refresh(showToast) {
+  try {
+    const res = await api('api/status');
+    const d = await res.json();
+    state = d;
+    const { pool, accounts, stats } = d;
+    $('m-total').textContent = pool.total;
+    $('m-health').textContent = `${pool.usable} 可用 · ${pool.cooling} 冷却`;
+    $('m-calls').textContent = fmt(stats.today.calls);
+    $('m-failover').textContent = `${stats.today.failures} 失败 · ${stats.today.failovers} 换号`;
+    $('m-credit').textContent = fmtCredit(stats.today.credit);
+    $('m-tokens').textContent = `${fmt(stats.today.inputTokens)} 入 / ${fmt(stats.today.outputTokens)} 出`;
+    $('m-left').textContent = accounts.some((a) => a.credits)
+      ? fmtCredit(accounts.reduce((s, a) => s + (a.credits?.total || 0), 0)) : '—';
+    $('m-third').textContent = d.providers.length ? `${d.providers.length} 个第三方渠道` : '第三方未启用';
+    $('health').innerHTML = `<span class="dot ${pool.usable > 0 ? '' : 'bad'}"></span><span>${pool.usable}/${pool.total} 账号可用</span>`;
+    $('dist-tag').textContent = pool.distribution + ' · 下一个 ' + (pool.preferred || '无');
+    $('n-pool').textContent = pool.total;
+    renderAccounts(accounts);
+    renderAutomation(d.automation);
+    renderChart(stats.recent || []);
+    renderBreakdown(stats.today);
+    $('s-fail').textContent = stats.today.failures;
+    $('s-failover').textContent = stats.today.failovers;
+    $('s-third').textContent = stats.today.thirdPartyCalls;
+    if (showToast) toast('已刷新');
+  } catch (e) {
+    $('health').innerHTML = `<span class="dot bad"></span><span>连不上</span>`;
+  }
+}
+
+refresh();
+setInterval(() => refresh(), 8000);
+</script>
+</body>
+</html>

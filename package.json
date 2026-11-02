@@ -1,0 +1,29 @@
+{
+  "name": "wbpool",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "双击即用的 AI 聚合池：WorkBuddy 多账号轮换 + 76 家免费渠道兜底 + 积分自动化，全程本地运行",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/1435661587/wbpool.git"
+  },
+  "bin": {
+    "wbpool": "./src/cli.mjs"
+  },
+  "scripts": {
+    "start": "node local.mjs",
+    "serve": "node src/cli.mjs serve",
+    "status": "node src/cli.mjs status",
+    "checkin": "node src/cli.mjs checkin",
+    "doctor": "node src/cli.mjs doctor",
+    "test": "node tools/selftest.mjs",
+    "build": "node tools/build-local-exe.mjs"
+  },
+  "devDependencies": {
+    "postject": "1.0.0-alpha.6"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
