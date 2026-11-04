@@ -27,10 +27,10 @@ const HERE = dirname(fileURLToPath(import.meta.url))
 const UI_DIR = join(HERE, 'ui')
 
 try {
-  if (process.platform === 'win32') execSync('chcp 65001 > nul', { stdio: 'ignore', shell: 'cmd.exe' })
+  if (process.platform === 'win32') execSync('chcp 65001 > nul', { stdio: 'ignore', shell: 'cmd.exe', windowsHide: true })
 } catch { /* 同上 */ }
 
-const line = (s = '') => process.stdout.write(s + '\n')
+const line = (s = '') => { try { process.stdout.write(s + '\n') } catch { /* 无窗口模式下没有控制台，静默 */ } }
 const info = (s) => line('    ' + s)
 
 function openBrowser(url) {
@@ -39,6 +39,38 @@ function openBrowser(url) {
     else if (process.platform === 'darwin') execFile('open', [url])
     else execFile('xdg-open', [url])
   } catch { /* 打不开就把地址印在屏幕上 */ }
+}
+
+/**
+ * 开机自启：把当前 exe 复制一份到 %LOCALAPPDATA%\wbpool\WB Pool.exe（稳定路径，
+ * 不受桌面文件挪动/删除影响），并写 HKCU Run 注册表键（只影响当前用户，
+ * 不需要管理员权限）。每次启动都会确保副本与注册表最新。
+ */
+function ensureAutostart() {
+  if (process.platform !== 'win32') return
+  try {
+    const base = process.env.LOCALAPPDATA || join(homedir(), 'AppData', 'Local')
+    const target = join(base, 'wbpool', 'WB Pool.exe')
+    mkdirSync(dirname(target), { recursive: true })
+    try { copyFileSync(process.execPath, target) } catch { /* 目标正在运行（开机自启那份），无需更新 */ }
+    execFile('reg', [
+      'add', 'HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run',
+      '/v', 'WBPool', '/t', 'REG_SZ', '/d', `"${target}"`, '/f',
+    ], { windowsHide: true }, () => { /* 写完即可，不等结果 */ })
+  } catch { /* 注册失败不影响主流程 */ }
+}
+
+/** 探测是否已有实例在跑（从配置端口起往后试 5 个），返回其端口，没有则 0。 */
+async function findRunningInstance(config) {
+  const host = config.host || '127.0.0.1'
+  const start = Number(config.port) || 8788
+  for (let port = start; port < start + 5; port++) {
+    try {
+      const res = await fetch(`http://${host}:${port}/healthz`, { signal: AbortSignal.timeout(1500) })
+      if (res.ok) return port
+    } catch { /* 没起来，试下一个端口 */ }
+  }
+  return 0
 }
 
 const ts = (ms) => {
@@ -124,6 +156,16 @@ async function main() {
   const config = loadConfig()
   if (firstRun) saveConfig(config)   // 落一份默认配置，方便用户改端口 / 填渠道 Key
 
+  // 开机自启（老版本升级上来的也会补注册）
+  ensureAutostart()
+
+  // 已有实例在跑（多半是开机自启那份）：直接打开控制台就走，不重复起网关
+  const runningPort = await findRunningInstance(config)
+  if (runningPort) {
+    openBrowser(`http://${config.host || '127.0.0.1'}:${runningPort}/`)
+    return 0
+  }
+
   line('')
   line('  WB Pool 本地版  ·  AI 聚合池（多账号轮换 + 免费渠道兜底）')
   line('  ' + '─'.repeat(56))
@@ -197,7 +239,7 @@ async function main() {
   line(`  控制台    ${base}/`)
   line(`  接口      ${base}/v1/chat/completions`)
   line(`  池        ${pool.accounts().length} 个账号（${usable.length} 个可用）`)
-  line('  停止      关闭本窗口即可')
+  line('  停止      任务管理器结束「WB Pool」进程（删除开机自启：注册表 Run 键 WBPool）')
   line('')
   if (pool.accounts().length === 0) {
     line('  还没有账号，两个办法任选：')

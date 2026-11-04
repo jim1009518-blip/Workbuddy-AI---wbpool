@@ -85,6 +85,24 @@ execFileSync(process.execPath, [
 ], { stdio: 'inherit' })
 console.log('[5/5] 注入完成')
 
+// 6) 无窗口化：PE Subsystem 3(Console) → 2(GUI)，双击不再弹黑色命令框
+{
+  const data = readFileSync(EXE)
+  const e_lfanew = data.readUInt32LE(0x3c)
+  if (data.subarray(e_lfanew, e_lfanew + 4).toString('latin1') !== 'PE\u0000\u0000') throw new Error('PE 头校验失败')
+  const opt = e_lfanew + 24                       // COFF 头 20 字节后是 Optional Header
+  const magic = data.readUInt16LE(opt)
+  if (magic !== 0x10b && magic !== 0x20b) throw new Error('未知 Optional Header 魔数：0x' + magic.toString(16))
+  const subOffset = opt + 68                      // PE32 / PE32+ 的 SubSystem 都在 0x44
+  if (data.readUInt16LE(subOffset) !== 3) {
+    console.log('[6/6] 注意：Subsystem 已不是 Console，跳过改写')
+  } else {
+    data.writeUInt16LE(2, subOffset)
+    writeFileSync(EXE, data)
+    console.log('[6/6] 已改为 GUI 子系统（双击无黑色窗口）')
+  }
+}
+
 // 桌面放一份，方便直接发给朋友
 const desktop = join(process.env.USERPROFILE || 'C:/Users/Administrator', 'Desktop')
 const target = join(desktop, 'WB Pool 本地版.exe')

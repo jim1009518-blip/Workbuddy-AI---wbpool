@@ -1,6 +1,6 @@
 {
   "name": "wbpool",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
   "description": "双击即用的 AI 聚合池：WorkBuddy 多账号轮换 + 76 家免费渠道兜底 + 积分自动化，全程本地运行",
   "license": "MIT",

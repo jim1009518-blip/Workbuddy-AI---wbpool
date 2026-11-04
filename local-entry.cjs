@@ -20,7 +20,7 @@ const { pathToFileURL } = require('node:url')
 
 // Windows 控制台默认 GBK，先切 UTF-8，避免中文乱码
 try {
-  if (process.platform === 'win32') execSync('chcp 65001 > nul', { stdio: 'ignore', shell: 'cmd.exe' })
+  if (process.platform === 'win32') execSync('chcp 65001 > nul', { stdio: 'ignore', shell: 'cmd.exe', windowsHide: true })
 } catch { /* 切不了就按原样输出 */ }
 
 function seaAsset(key) {

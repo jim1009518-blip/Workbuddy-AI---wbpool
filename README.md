@@ -62,8 +62,13 @@ POST http://127.0.0.1:8788/v1/chat/completions
    - 在 `127.0.0.1:8788` 起网关
    - 把「WB Pool」注册进 WorkBuddy 的模型列表
    - 打开浏览器进控制台
+   - **注册开机自启**（`%LOCALAPPDATA%\wbpool\WB Pool.exe` + 注册表 `HKCU\...\Run\WBPool`），重启电脑后服务自动就绪，随时双击 exe 直接打开控制台
 3. 在 WorkBuddy 模型选择器里选 **WB Pool · 自动（多账号池）**，开聊。
    想指定具体模型，先在控制台「网关」页勾选，点「写入 WorkBuddy」，模型列表里就会出现独立条目。
+
+> **v0.2.0 起无黑色命令窗口**：exe 为 GUI 子系统，双击后台静默运行并自动打开控制台；
+> 重复双击不会起第二个实例，只会再次打开页面。
+> 取消自启：删除注册表 `HKCU\Software\Microsoft\Windows\CurrentVersion\Run` 里的 `WBPool` 键。
 
 **没装 WorkBuddy 也能用**：打开控制台 →「聚合渠道」页 → 填任意一家免费渠道的 API Key。
 
@@ -71,7 +76,7 @@ POST http://127.0.0.1:8788/v1/chat/completions
 
 - 所有凭据只落在本机 `%USERPROFILE%\.wbpool\`，**不经过、不上传任何第三方服务器**。
 - 网关只绑定 `127.0.0.1`，局域网里别人碰不到。
-- 关闭 exe 的控制台窗口即停止服务；数据随时可整目录删除。
+- 停止服务：任务管理器结束「WB Pool」进程；数据随时可整目录删除。
 
 ### 从源码构建
 
@@ -142,7 +147,12 @@ data/providers-registry.json  76 家免费渠道注册表
    - start the gateway on `127.0.0.1:8788`
    - register "WB Pool" into WorkBuddy's model list
    - open the web console in your browser
+   - **enable auto-start on boot** (`%LOCALAPPDATA%\wbpool\WB Pool.exe` + registry `HKCU\...\Run\WBPool`), so the service is ready after every reboot — and double-clicking the exe later just opens the console
 3. Pick **WB Pool · Auto** in WorkBuddy's model selector and chat away. To expose specific models, tick them on the **Gateway** page and click *Write into WorkBuddy*.
+
+> **Since v0.2.0 there is no black console window**: the exe is a GUI-subsystem binary that runs silently in the background and opens the console automatically.
+> Double-clicking again never spawns a second instance — it just reopens the page.
+> To disable auto-start, delete the `WBPool` value under `HKCU\Software\Microsoft\Windows\CurrentVersion\Run`.
 
 **No WorkBuddy installed?** Still works: open the console → *Providers* tab → paste any free provider's API key.
 
@@ -150,7 +160,7 @@ data/providers-registry.json  76 家免费渠道注册表
 
 - All credentials stay in `%USERPROFILE%\.wbpool\` on your machine — **nothing is sent to any third-party server**.
 - The gateway binds to `127.0.0.1` only.
-- Closing the exe window stops the service; delete the data folder to remove everything.
+- To stop the service, end the "WB Pool" process in Task Manager; delete the data folder to remove everything.
 
 ### Build from source
 
