@@ -252,8 +252,14 @@ function install() {
     supportsToolCall: true,
     supportsImages: true,
     supportsReasoning: true,
-    maxInputTokens: 256000,
-    maxOutputTokens: 64000,
+    maxInputTokens: 1000000,
+    maxOutputTokens: 128000,
+    // WorkBuddy 只有拿到 contextWindow.supportedLengths（>=2 档）才会在模型详情里
+    // 把「上下文窗口」渲染成可切换的子菜单；缺这个字段就只剩「思考强度」。
+    contextWindow: {
+      supportedLengths: [128000, 300000, 1000000],
+      defaultLength: 300000,
+    },
     reasoning: { defaultEffort: 'high', supportedEfforts: ['high', 'max'] },
   }
 
