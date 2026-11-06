@@ -46,10 +46,32 @@ export const DEFAULTS = {
   cooldownMs: 60_000,
   /** 积分耗尽后的休息时长（毫秒）。 */
   exhaustCooldownMs: 30 * 60_000,
+  /**
+   * 每个账号保留的最低积分（留底）。
+   *
+   * 剩余积分 ≤ 该值时这个号就退出轮换，自动换下一个号——避免把某个号的
+   * 积分一次烧到 0。0 表示不保留（烧完才换）。
+   * 积分未知（还没探测过）的账号不受限制，先让它试。
+   */
+  minCredits: 100,
   /** 凭据被上游拒绝后的休息时长（毫秒），只有重新登录能解。 */
   credentialDeadCooldownMs: 30 * 60_000,
   /** 提前多久刷新 token（毫秒）。 */
   refreshMarginMs: 5 * 60_000,
+  /**
+   * ===== 上游超时兜底（防止「永远转圈」）=====
+   *
+   * 症状：上游（WorkBuddy / 第三方渠道）的流式连接一旦变成「半开」——
+   * 对端已经不发了但 TCP 没断——旧代码的 `while(true) reader.read()` 会
+   * 永远等下去，既不报错也不结束，调用方（WorkBuddy 界面）就只能一直转圈，
+   * 连「停止」都发不进去。下面三个阈值负责把这种情况变成显式错误。
+   */
+  /** 等待上游响应头（到首个字节）的上限（毫秒）。 */
+  upstreamConnectTimeoutMs: 90_000,
+  /** 流式转发期间，连续多久收不到任何数据就判定半开（毫秒）。0 = 不限。 */
+  upstreamIdleTimeoutMs: 120_000,
+  /** 单次请求的总时长上限（毫秒），兜住「每 100 秒吐一个字节」的慢速拉扯。0 = 不限。 */
+  upstreamTotalTimeoutMs: 30 * 60_000,
   /** 调用方只写 `wbpool` 时，实际转发到哪个上游模型。 */
   defaultModel: 'auto',
   /** 第三方渠道：{ [providerId]: { apiKey, enabled, baseUrl?, models? } }。 */

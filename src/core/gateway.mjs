@@ -99,8 +99,39 @@ function conversationKeyOf(req, body) {
  * 上游恒为流式，所以 stream:false 的调用方必须由这里合成。顺手收集 usage
  * （上游把积分消耗写在 usage.credit 里）。
  */
-export async function collectStream(webStream) {
+/**
+ * 带超时的分块读取。
+ *
+ * `reader.read()` 本身没有超时概念：上游半开时它永远不 resolve。这里用
+ * Promise.race 抢一个超时分支，超时就把 reader.cancel() 掉并抛出可识别的
+ * 错误，让上层把「无响应的流」变成明确的失败，而不是无限等待。
+ */
+function readChunk(reader, { idleTimeoutMs = 0, totalTimeoutMs = 0, startedAt = Date.now(), label = '上游' } = {}) {
+  const budgets = []
+  if (idleTimeoutMs > 0) budgets.push({ ms: idleTimeoutMs, why: `${label} ${Math.round(idleTimeoutMs / 1000)} 秒没有任何数据` })
+  if (totalTimeoutMs > 0) {
+    const left = totalTimeoutMs - (Date.now() - startedAt)
+    budgets.push({ ms: Math.max(left, 0), why: `请求总时长超过 ${Math.round(totalTimeoutMs / 60000)} 分钟` })
+  }
+  if (budgets.length === 0) return reader.read()
+
+  const hit = budgets.reduce((a, b) => (b.ms <= a.ms ? b : a))
+  let timer
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(() => {
+      const error = new Error(`读取超时：${hit.why}`)
+      error.code = 'UPSTREAM_TIMEOUT'
+      error.reason = hit.why
+      reject(error)
+    }, hit.ms)
+    if (typeof timer.unref === 'function') timer.unref()
+  })
+  return Promise.race([reader.read(), timeout]).finally(() => clearTimeout(timer))
+}
+
+export async function collectStream(webStream, { idleTimeoutMs = 0, totalTimeoutMs = 0 } = {}) {
   const reader = webStream.getReader()
+  const startedAt = Date.now()
   const decoder = new TextDecoder()
   let buffer = ''
   let content = ''
@@ -137,16 +168,20 @@ export async function collectStream(webStream) {
     }
   }
 
-  while (true) {
-    const { done, value } = await reader.read()
-    if (done) break
-    buffer += decoder.decode(value, { stream: true })
-    let idx
-    while ((idx = buffer.indexOf('\n')) >= 0) {
-      const line = buffer.slice(0, idx).trim()
-      buffer = buffer.slice(idx + 1)
-      if (line.startsWith('data:')) handleFrame(line.slice(5).trim())
+  try {
+    while (true) {
+      const { done, value } = await readChunk(reader, { idleTimeoutMs, totalTimeoutMs, startedAt })
+      if (done) break
+      buffer += decoder.decode(value, { stream: true })
+      let idx
+      while ((idx = buffer.indexOf('\n')) >= 0) {
+        const line = buffer.slice(0, idx).trim()
+        buffer = buffer.slice(idx + 1)
+        if (line.startsWith('data:')) handleFrame(line.slice(5).trim())
+      }
     }
+  } finally {
+    try { reader.cancel() } catch { /* 已结束 */ }
   }
   if (buffer.trim().startsWith('data:')) handleFrame(buffer.trim().slice(5).trim())
 
@@ -281,7 +316,15 @@ export function createGateway({ config, pool, client, stats, uiDir, runAutomatio
       chain = [resolveTarget(body.model, config).model]
     }
 
-    let lastError = { kind: 'server', message: '池里没有可用账号' }
+    // 池子空的时候说清楚是「积分留底让位」还是「真的全在冷却」
+    const heldCount = pool.heldByReserve()
+    const reserveVal = pool.creditsReserve()
+    let lastError = {
+      kind: heldCount > 0 ? 'reserve' : 'server',
+      message: heldCount > 0
+        ? `${heldCount} 个账号剩余积分已跌到留底线（≤ ${reserveVal} 分），按设置主动让位了`
+        : '池里没有可用账号',
+    }
 
     for (const modelName of chain) {
       const prepared = prepareChatBody(JSON.stringify({ ...body, model: modelName }), { region: 'cn' })
@@ -324,18 +367,25 @@ export function createGateway({ config, pool, client, stats, uiDir, runAutomatio
       log(`第三方渠道 ${provider.name} 失败(${relay.kind})`)
     }
 
-    const status = lastError.kind === 'rate-limit' ? 429 : lastError.kind === 'exhaust' ? 402 : 502
+    const status = lastError.kind === 'rate-limit' ? 429
+      : (lastError.kind === 'exhaust' || lastError.kind === 'reserve') ? 402
+        : 502
     const hint = lastError.kind === 'rate-limit'
       ? '所有 WorkBuddy 账号都在限流冷却中，稍后再试或加一个号'
       : lastError.kind === 'exhaust'
         ? '所有账号积分已耗尽'
-        : '上游全部不可用'
+        : lastError.kind === 'reserve'
+          ? `所有账号剩余积分都到了留底线（≤ ${reserveVal} 分）。想继续用就在控制台把「每号留底积分」调低或设为 0`
+          : '上游全部不可用'
     return oaiError(res, status, `${hint}（最后一次错误：${String(lastError.message).slice(0, 300)}）`, 'pool_error')
   }
 
   /** 把上游响应转发给调用方：流式逐块、非流式聚合。 */
   async function pipeUpstream(res, upstream, { stream, ctx }) {
     const contentType = String(upstream.headers.get('content-type') ?? '').toLowerCase()
+    const idleTimeoutMs = Number(config.upstreamIdleTimeoutMs) || 0
+    const totalTimeoutMs = Number(config.upstreamTotalTimeoutMs) || 0
+    const startedAt = Date.now()
 
     if (!stream) {
       // 第三方渠道在 stream:false 时回的是普通 JSON，不能丢给 SSE 聚合器
@@ -362,8 +412,9 @@ export function createGateway({ config, pool, client, stats, uiDir, runAutomatio
 
       let payload
       try {
-        payload = await collectStream(upstream.body)
+        payload = await collectStream(upstream.body, { idleTimeoutMs, totalTimeoutMs })
       } catch (error) {
+        if (error?.code === 'UPSTREAM_TIMEOUT') return oaiError(res, 504, `读取上游失败：${error.reason}`, 'upstream_timeout')
         return oaiError(res, 502, `读取上游失败：${String(error)}`)
       }
       if (payload.usage) {
@@ -435,7 +486,7 @@ export function createGateway({ config, pool, client, stats, uiDir, runAutomatio
 
     try {
       while (true) {
-        const { done, value } = await reader.read()
+        const { done, value } = await readChunk(reader, { idleTimeoutMs, totalTimeoutMs, startedAt })
         if (done) break
         buffer += decoder.decode(value, { stream: true })
         let idx
@@ -447,7 +498,16 @@ export function createGateway({ config, pool, client, stats, uiDir, runAutomatio
       }
       if (buffer.trim()) pump(buffer)
     } catch (error) {
-      log('流转发中断', String(error))
+      if (error?.code === 'UPSTREAM_TIMEOUT') {
+        // 半开连接：必须给调用方一个明确结束信号，否则界面会永远转圈
+        log('流转发超时', error.reason)
+        const frame = { error: { message: error.reason, type: 'upstream_timeout', code: 'upstream_timeout' } }
+        if (!closed) {
+          try { res.write(`data: ${JSON.stringify(frame)}\n\ndata: [DONE]\n\n`) } catch { /* 已断开 */ }
+        }
+      } else {
+        log('流转发中断', String(error))
+      }
     } finally {
       if (!closed) res.end()
       try { reader.cancel() } catch { /* 已结束 */ }
@@ -680,7 +740,9 @@ a{color:#3ddc97;text-decoration:none}</style></head><body><div class="c">
       tokenValid: !a.expiresAt || a.expiresAt > Date.now(),
       cooldownMs: Math.max(0, (a.cooldownUntil || 0) - Date.now()),
       cooldownReason: a.cooldownReason || '',
-      usable: (a.cooldownUntil || 0) <= Date.now(),
+      usable: pool.isUsable(a),
+      // 因积分跌到留底线以下而主动让位（不算冷却，也不算坏号）
+      reserveHold: pool.belowReserve(a),
       credits: a.credits,
       checkin: a.checkin,
       requestCount: a.requestCount || 0,
@@ -700,7 +762,9 @@ a{color:#3ddc97;text-decoration:none}</style></head><body><div class="c">
       pool: {
         total: accounts.length,
         usable: accounts.filter((a) => a.usable).length,
-        cooling: accounts.filter((a) => !a.usable).length,
+        cooling: accounts.filter((a) => !a.usable && !a.reserveHold).length,
+        held: accounts.filter((a) => a.reserveHold).length,
+        minCredits: pool.creditsReserve(),
         distribution: config.distribution,
         preferred: accounts.find((a) => a.usable)?.label ?? '',
       },
@@ -714,6 +778,7 @@ a{color:#3ddc97;text-decoration:none}</style></head><body><div class="c">
         port: config.port,
         distribution: config.distribution,
         cooldownMs: config.cooldownMs,
+        minCredits: pool.creditsReserve(),
         defaultModel: config.defaultModel || 'auto',
         automation: config.automation,
       },
@@ -1058,6 +1123,11 @@ a{color:#3ddc97;text-decoration:none}</style></head><body><div class="c">
       const allowed = ['distribution', 'cooldownMs', 'defaultModel', 'port']
       for (const key of allowed) {
         if (key in payload) config[key] = payload[key]
+      }
+      // 每号留底积分：0 = 不保留（烧完才换号）；负数/非数字一律当 0
+      if ('minCredits' in payload) {
+        const n = Number(payload.minCredits)
+        config.minCredits = Number.isFinite(n) && n > 0 ? Math.round(n) : 0
       }
       if (payload.providers && typeof payload.providers === 'object') config.providers = payload.providers
       if (payload.automation && typeof payload.automation === 'object') {

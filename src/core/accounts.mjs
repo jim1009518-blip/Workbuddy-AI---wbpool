@@ -271,13 +271,34 @@ export class AccountPool {
     return this.byId.get(id)
   }
 
-  /** 一个账号能不能用：没在冷却、令牌没过期。 */
+  /** 每号留底的积分阈值（0 = 不保留，烧完才换号）。 */
+  creditsReserve() {
+    return reserveOf(this.config)
+  }
+
+  /**
+   * 这个号是不是已经落进「留底区」，该让位给下一个号了。
+   *
+   * 积分未知（null 或没有 total）时返回 false：新号还没探测过余额，先让它试；
+   * 真耗尽会被上游判 exhaust 进冷却，顺带把余额记成 0，之后就自动让位了。
+   */
+  belowReserve(account) {
+    return belowReserveOf(account, this.config)
+  }
+
+  /** 一个账号能不能用：没在冷却、令牌没过期、积分没跌破留底线。 */
   isUsable(account, now = Date.now()) {
     if (!account) return false
     if (account.cooldownUntil > now) return false
     // accessToken 过期但 refreshToken 还有效 → 可救，算可用（取用时会刷新）
     if (account.expiresAt && account.expiresAt <= now && account.refreshExpiresAt <= now) return false
+    if (this.belowReserve(account)) return false
     return true
+  }
+
+  /** 因为留底而暂时让位的账号数（界面用）。 */
+  heldByReserve() {
+    return this.accounts().filter((a) => this.belowReserve(a)).length
   }
 
   usable(now = Date.now()) {
@@ -294,6 +315,11 @@ export class AccountPool {
     const now = Date.now()
     account.cooldownUntil = Math.max(account.cooldownUntil || 0, now + ms)
     account.cooldownReason = kind
+    // 上游明确说积分不够 → 本地余额直接记 0。
+    // 否则冷却结束后会被重新选中、再撞一次 402，白烧一次往返。
+    if (kind === 'exhaust') {
+      account.credits = { ...(account.credits || {}), total: 0, at: now }
+    }
     this.persist()
     log(`账号 ${account.label} 进入冷却(${kind}) ${Math.round(ms / 1000)}s`)
   }
@@ -389,6 +415,23 @@ export class AccountPool {
   }
 }
 
+/**
+ * 留底阈值的纯函数版本（模块级，供 summarize 用）。
+ * 与 Pool#creditsReserve / #belowReserve 保持同一套规则。
+ */
+export function reserveOf(config) {
+  const n = Number(config?.minCredits)
+  return Number.isFinite(n) && n > 0 ? n : 0
+}
+
+export function belowReserveOf(account, config) {
+  const reserve = reserveOf(config)
+  if (reserve <= 0 || !account) return false
+  const total = account.credits?.total
+  if (typeof total !== 'number') return false
+  return total <= reserve
+}
+
 /** 账号的展示用摘要（不含令牌）。 */
 export function summarize(account, config) {
   const now = Date.now()
@@ -406,7 +449,10 @@ export function summarize(account, config) {
     lastUsedAt: account.lastUsedAt,
     cooldownMs: Math.max(0, (account.cooldownUntil || 0) - now),
     cooldownReason: account.cooldownReason || '',
-    usable: (account.cooldownUntil || 0) <= now,
+    usable: (account.cooldownUntil || 0) <= now && !belowReserveOf(account, config),
+    // 因积分留底被让位（区别于冷却/失效）
+    reserveHold: belowReserveOf(account, config),
+    reserve: reserveOf(config),
     credits: account.credits,
     checkin: account.checkin,
     requestCount: account.requestCount || 0,

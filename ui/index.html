@@ -132,6 +132,13 @@
       <div class="card">
         <h2>账号池 <span class="tag" id="dist-tag">-</span></h2>
         <div id="accounts"><div class="empty">读取中…</div></div>
+        <div class="card-body" style="border-top:1px solid var(--line-soft);padding:11px 17px;display:flex;align-items:center;gap:9px;flex-wrap:wrap;font-size:12px">
+          <span style="color:var(--dim)">每号留底积分</span>
+          <input id="min-credits" type="number" min="0" step="10" placeholder="100" style="width:84px;padding:5px 9px;font-size:12px" onkeydown="if(event.key==='Enter')saveMinCredits()">
+          <span style="color:var(--dimmer);font-size:11.5px">剩余 ≤ 该值就换下一个号，不会把一个号烧到 0；填 0 = 不保留</span>
+          <button class="sm primary" onclick="saveMinCredits()">保存</button>
+          <span id="reserve-hint" style="color:var(--amber);font-size:11.5px"></span>
+        </div>
         <div class="card-body" style="border-top:1px solid var(--line-soft);display:flex;gap:8px;flex-wrap:wrap">
           <button class="primary" onclick="syncFromLocal()">⟳ 从本机同步</button>
           <button onclick="openImport()">＋ 手动导入</button>
@@ -308,13 +315,19 @@ function renderAccounts(accounts) {
   if (!accounts.length) { box.innerHTML = '<div class="empty">池里还没有账号。<br>点「＋ 导入账号」粘贴凭据，或在本机双击 WB Pool 同步。</div>'; return; }
   box.innerHTML = accounts.map((a) => {
     const cooling = a.cooldownMs > 0, dead = a.cooldownReason === 'dead';
+    const held = a.reserveHold === true && !cooling;
     const initial = (a.label || '?').replace(/[^0-9A-Za-z\u4e00-\u9fa5]/g, '').slice(-2) || 'WB';
+    const stateBadge = cooling
+      ? `<span class="badge ${dead ? 'dead' : 'cool'}">${dead ? '凭据失效' : '冷却 ' + timeLeft(a.cooldownMs)}</span>`
+      : held
+        ? `<span class="badge" style="background:rgba(74,168,255,.13);color:var(--blue);border-color:rgba(74,168,255,.25)">留底停用 ${a.credits?.total ?? 0} 分</span>`
+        : '<span class="badge">可用</span>';
     return `<div class="acct">
-      <div class="avatar ${cooling ? 'cool' : ''}">${esc(initial)}</div>
+      <div class="avatar ${cooling || held ? 'cool' : ''}">${esc(initial)}</div>
       <div class="main">
         <div class="name">${esc(a.label)}
           <span class="badge region">${a.region === 'global' ? '国际版' : '国内版'}</span>
-          ${cooling ? `<span class="badge ${dead ? 'dead' : 'cool'}">${dead ? '凭据失效' : '冷却 ' + timeLeft(a.cooldownMs)}</span>` : '<span class="badge">可用</span>'}
+          ${stateBadge}
         </div>
         <div class="meta">
           <span>${a.checkin ? `连续 ${a.checkin.streakDays} 天 · 今日${a.checkin.todayCheckedIn ? '已签' : '未签'}` : '签到未查'}</span>
@@ -343,6 +356,22 @@ async function removeAccount(id, label) {
   const res = await api('api/accounts/remove', { method: 'POST', body: JSON.stringify({ id }) });
   const d = await res.json();
   toast(d.ok ? '已删除' : '删除失败'); refresh();
+}
+
+/**
+ * 保存「每号留底积分」。
+ *
+ * 剩余积分 ≤ 该值时这个号就退出轮换，自动换下一个——十几个号不会被某
+ * 一个号一口气烧光。填 0 表示不保留（回到「用完一个再下一个」）。
+ */
+async function saveMinCredits() {
+  const raw = $('min-credits').value.trim();
+  const v = raw === '' ? 0 : Number(raw);
+  if (!Number.isFinite(v) || v < 0) { toast('请填 0 或正整数'); return; }
+  const res = await api('api/config', { method: 'POST', body: JSON.stringify({ minCredits: v }) });
+  if (!res.ok) { toast('保存失败：' + res.status); return; }
+  toast(v > 0 ? `已保存：每号保留 ${Math.round(v)} 分` : '已保存：不保留（烧完才换号）');
+  refresh();
 }
 
 /**
@@ -741,7 +770,7 @@ async function refresh(showToast) {
     state = d;
     const { pool, accounts, stats } = d;
     $('m-total').textContent = pool.total;
-    $('m-health').textContent = `${pool.usable} 可用 · ${pool.cooling} 冷却`;
+    $('m-health').textContent = `${pool.usable} 可用 · ${pool.cooling} 冷却${pool.held ? ` · ${pool.held} 留底` : ''}`;
     $('m-calls').textContent = fmt(stats.today.calls);
     $('m-failover').textContent = `${stats.today.failures} 失败 · ${stats.today.failovers} 换号`;
     $('m-credit').textContent = fmtCredit(stats.today.credit);
@@ -752,6 +781,20 @@ async function refresh(showToast) {
     $('health').innerHTML = `<span class="dot ${pool.usable > 0 ? '' : 'bad'}"></span><span>${pool.usable}/${pool.total} 账号可用</span>`;
     $('dist-tag').textContent = pool.distribution + ' · 下一个 ' + (pool.preferred || '无');
     $('n-pool').textContent = pool.total;
+    // 留底设置：别抢用户正在输入的框
+    const mc = $('min-credits');
+    if (mc && document.activeElement !== mc) mc.value = d.config?.minCredits ?? 0;
+    const hint = $('reserve-hint');
+    if (pool.held && pool.usable === 0) {
+      // 留底设太高会把池子锁死，直接告诉他怎么救
+      hint.style.color = 'var(--red)';
+      hint.textContent = `全部 ${pool.held} 个号都到留底线了 —— 把留底调低或填 0 才能继续用`;
+    } else if (pool.held) {
+      hint.style.color = 'var(--amber)';
+      hint.textContent = `${pool.held} 个号因留底让位`;
+    } else {
+      hint.textContent = '';
+    }
     renderAccounts(accounts);
     renderAutomation(d.automation);
     renderChart(stats.recent || []);

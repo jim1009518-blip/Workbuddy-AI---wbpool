@@ -2,6 +2,8 @@
 
 [中文](#-中文) | [English](#english)
 
+[![GitHub](https://img.shields.io/badge/GitHub-wbpool--workbuddyAI-181717?logo=github)](https://github.com/jim1009518-blip/wbpool-workbuddyAI)
+
 把 **WorkBuddy 多账号免费额度** 和 **76 家第三方免费渠道** 聚合成一个 OpenAI 兼容端点。
 单文件 exe，**双击就能用**，全程只在本机运行，不需要任何服务器。
 
@@ -13,8 +15,11 @@
 
 ### 界面预览 / Screenshots
 
-**账号池 / Account Pool** —— 所有账号一目了然：积分、签到、令牌有效期、冷却状态
+**账号池 / Account Pool** —— 所有账号一目了然：积分、签到、令牌有效期、冷却状态；余额跌到「留底线」的号自动让位给下一个
 ![账号池](docs/screenshots/01-pool.png)
+
+**留底积分 / Credit floor** —— 设个保留值（默认 100），谁的余额到线就让位，标成「留底停用」，不会被一个号一口气烧光
+![留底积分](docs/screenshots/07-reserve.png)
 
 **聚合渠道 / Providers** —— 76 家免费渠道注册表，填 Key 即点亮
 ![聚合渠道](docs/screenshots/02-providers.png)
@@ -34,6 +39,7 @@
 ### 它做什么
 
 - **多账号轮换**：自动扫描本机 WorkBuddy 桌面端的登录凭据，多账号收进一个池子；一个号 429 / 积分耗尽就自动换下一个。
+- **每号留底积分**：十几个号不会被某一个号一口气烧光。设个保留值（默认 100），谁的余额跌到这条线就让位给下一个号，留在池里继续每天签到回血。值可随时在「账号池」页改，填 0 就回到「烧完才换号」。
 - **积分自动化**：每天自动签到、领补偿和任务奖励，池子里所有号一起薅。
 - **免费渠道兜底**：内置 76 家第三方渠道注册表（Groq / OpenRouter / SiliconFlow 等），控制台里填个 Key 就点亮。
 - **一条端点**：对外只暴露 `http://127.0.0.1:8788/v1/chat/completions`，WorkBuddy / 任何 OpenAI 兼容客户端都能接。
@@ -106,6 +112,7 @@ node tools/selftest.mjs # 池路由自测
 | `port` | `8788` | 网关端口（被占用会自动往后找） |
 | `distribution` | `priority` | 分配策略：`priority` / `round-robin` / `balanced` / `sticky` / `expiry` |
 | `cooldownMs` | `60000` | 429 冷却时长 |
+| `minCredits` | `100` | 每号留底积分：余额 ≤ 该值的号退出轮换，自动换下一个；`0` = 不保留 |
 | `providers` | `{}` | 第三方渠道：`{ "groq": { "apiKey": "…", "enabled": true } }` |
 | `selectedModels` | `[]` | 要注册成独立模型条目的模型 id |
 | `automation` | 开 | 每日签到 / 奖励领取时间点 |
@@ -134,6 +141,7 @@ data/providers-registry.json  76 家免费渠道注册表
 **WB Pool** aggregates **multiple WorkBuddy free-tier accounts** plus **76 third-party free providers** into a single OpenAI-compatible endpoint. One standalone exe — **double-click and it works** — everything runs locally, no server required.
 
 - **Multi-account rotation**: scans WorkBuddy desktop credentials on your machine, pools them together; a rate-limited or exhausted account is skipped automatically.
+- **Per-account credit floor**: with a dozen accounts, no single one gets burned dry. Set a reserve (default 100) and any account whose balance falls to that floor steps aside for the next one, staying in the pool to keep earning daily check-in credits. Editable on the *Pool* page; set 0 for the old "burn it all, then switch" behaviour.
 - **Credit automation**: daily check-in, compensation and task rewards are claimed for every account.
 - **Free-provider fallback**: a built-in registry of 76 third-party providers (Groq / OpenRouter / SiliconFlow, etc.) — paste an API key in the console to enable.
 - **One endpoint**: everything is exposed at `http://127.0.0.1:8788/v1/chat/completions`, usable from WorkBuddy or any OpenAI-compatible client.
@@ -190,6 +198,7 @@ A default `%USERPROFILE%\.wbpool\config.json` is created on first launch. Common
 | `port` | `8788` | Gateway port (auto-increments if taken) |
 | `distribution` | `priority` | `priority` / `round-robin` / `balanced` / `sticky` / `expiry` |
 | `cooldownMs` | `60000` | 429 cooldown duration |
+| `minCredits` | `100` | Per-account credit floor: an account at or below it leaves rotation for the next one; `0` = no floor |
 | `providers` | `{}` | Third-party providers: `{ "groq": { "apiKey": "…", "enabled": true } }` |
 | `selectedModels` | `[]` | Model ids registered as standalone WorkBuddy entries |
 | `automation` | on | Daily check-in / reward schedule |

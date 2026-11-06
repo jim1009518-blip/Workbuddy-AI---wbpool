@@ -6,7 +6,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/jim1009518-blip/Workbuddy-AI---wbpool.git"
+    "url": "git+https://github.com/jim1009518-blip/wbpool-workbuddyAI.git"
   },
   "bin": {
     "wbpool": "./src/cli.mjs"
